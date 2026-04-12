@@ -1,0 +1,21 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 8501,
+    allowedHosts: ['.serveo.net', '.serveousercontent.com', 'www.hgmsg.cn'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      }
+    },
+    hmr: false,
+  },
+  build: {
+    target: 'esnext',
+  },
+})

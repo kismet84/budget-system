@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw, Database } from 'lucide-react'
+import { Upload, FileSpreadsheet, XCircle, AlertCircle, Loader2, RefreshCw, Database } from 'lucide-react'
 import { importQuotaExcel, getImportReport, type ImportReport, type ImportReportResponse } from '../api/quotaImport'
 import BottomNav from '../components/BottomNav'
 

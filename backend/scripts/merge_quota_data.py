@@ -23,26 +23,81 @@ if _UNIT_FILE.exists():
         _unit_map = json.load(f)
 
 
-def extract_unit(quota_id: str, project_str: str) -> str:
-    # 优先使用现成的计量单位.json（直接匹配 quota_id）
+def extract_unit(quota_id: str, project_str: str) -> dict:
+    """
+    返回 dict: {"quantity": "100" | None, "unit": "m²" | None}
+    优先使用计量单位.json（已拆分 quantity+unit）；
+    fallback 用全角数字正则从项目名称提取。
+    """
+    # 优先使用现成的计量单位.json
     if quota_id in _unit_map:
-        return _unit_map[quota_id]
-    # fallback：从项目名称正则提取
-    """从项目名称字符串末尾提取计量单位"""
+        data = _unit_map[quota_id]
+        if isinstance(data, dict):
+            return data  # 新格式：{"quantity": ..., "unit": ...}
+        # 旧格式：直接是字符串
+        raw = data
+        q = extract_q(raw)
+        u = normalize_u(raw)
+        return {"quantity": q, "unit": u}
+
+    # fallback：从项目名称正则提取（全角数字兼容）
     if not project_str:
-        return ""
+        return {"quantity": None, "unit": None}
+
+    # 全角数字兼容的正则
+    DIGIT = r'[０-９0-9]'
     patterns = [
-        r"单位[：:]\s*(\S+)",
-        r"(\d+(?:\.\d+)?m³)",
-        r"(\d+(?:\.\d+)?m²)",
-        r"(\d+(?:\.\d+)?m)(?!\w)",
-        r"(\d+(?:\.\d+)?\s*(?:m³|m²|m|t|kg|个|套|樘|项|节|盏|米|平方|立方|延长米))\s*$",
+        rf"单位[：:]\s*({DIGIT}+\.?\d*(?:m³|m²|m|t|kg|个|套|樘|项|节|盏|米|平方|立方|延长米))",
+        rf"({DIGIT}+\.?\d*m³)",
+        rf"({DIGIT}+\.?\d*m²)",
+        rf"({DIGIT}+\.?\d*m)(?!\w)",
+        rf"({DIGIT}+\.?\d*\s*(?:m³|m²|m|t|kg|个|套|樘|项|节|盏|米|平方|立方|延长米))\s*$",
     ]
     for pat in patterns:
         m = re.search(pat, project_str)
         if m:
-            return m.group(1).strip()
-    return ""
+            raw = m.group(1).strip()
+            q = extract_q(raw)
+            u = normalize_u(raw)
+            return {"quantity": q, "unit": u}
+
+    return {"quantity": None, "unit": None}
+
+
+def extract_q(raw: str) -> str | None:
+    """从 raw 单位字符串提取数量前缀"""
+    raw = to_half_width(raw).replace('m2', 'm²').replace('m3', 'm³')
+    for q in ['100m²', '100m³', '100m', '10m²', '10m³', '10m']:
+        if q in raw:
+            return q[:-1]
+    return None
+
+
+def normalize_u(raw: str) -> str:
+    """归一化单位文本"""
+    raw = to_half_width(raw).replace('m2', 'm²').replace('m3', 'm³')
+    mapping = [
+        ('100m²', 'm²'), ('100m³', 'm³'), ('100m', 'm'),
+        ('10m²', 'm²'), ('10m³', 'm³'), ('10m', 'm'),
+        ('m³', 'm³'), ('m²', 'm²'), ('t', 't'), ('kg', 'kg'),
+        ('个', '个'), ('套', '套'), ('樘', '樘'), ('项', '项'), ('节', '节'), ('m', 'm'),
+    ]
+    for k, v in mapping:
+        if k in raw:
+            return v
+    return raw
+
+
+def to_half_width(t: str) -> str:
+    result = []
+    for ch in str(t):
+        code = ord(ch)
+        if 0xFF01 <= code <= 0xFF5E:
+            code -= 0xFEE0
+        elif code == 0x3000:
+            code = 0x0020
+        result.append(chr(code))
+    return ''.join(result)
 
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -89,17 +144,21 @@ for quota_id in sorted(all_ids):
     if not section:
         missing_section.append(quota_id)
 
+    # 提取计量单位（quantity + unit dict）
+    unit_data = extract_unit(quota_id, project)
+
     # 构造完整记录（字段名与 import_quota_db.py 的 SQL 对应）
     record = {
         "定额编号": quota_id,
-        "category": section.get("一级", ""),        # 专业类别（一级分部）
+        "category": section.get("分部", ""),         # 专业类别（一级分部）
         "section": " / ".join(filter(None, [        # 完整三级路径
-            section.get("一级", ""),
-            section.get("二级", ""),
-            section.get("三级", ""),
+            section.get("分部", ""),
+            section.get("子分部", ""),
+            section.get("分项", ""),
         ])),
         "项目名称": project,
-        "计量单位": extract_unit(quota_id, project),
+        "计量单位": unit_data.get("unit"),          # 单位（不含数量前缀）
+        "计量数量": unit_data.get("quantity"),       # 数量前缀（如 "100"）
         "工作内容": "",
         "全费用":     costs.get("全费用"),
         "其中人工费": costs.get("人工费"),

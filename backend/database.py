@@ -7,17 +7,28 @@ from sqlalchemy.orm import sessionmaker, Session
 from config import settings
 
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+else:
+    # 检测 localhost/127.0.0.1 → 改用 Unix socket（绕过 Postgres.app IPv6/trust 问题）
+    from urllib.parse import urlparse
+    parsed = urlparse(_db_url)
+    if parsed.hostname in (None, "localhost", "127.0.0.1"):
+        _db_url = (
+            f"postgresql://{parsed.username or 'kis'}@"
+            f"/{parsed.path.lstrip('/')}"
+            f"?host=/tmp"
+        )
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    _db_url,
     connect_args=connect_args,
     echo=False,
-    pool_size=5,           # 常规连接池大小
-    max_overflow=10,       # 允许额外创建的连接数（峰值）
-    pool_pre_ping=True,    # 每次使用前检测连接是否存活（防断开）
-    pool_recycle=3600,     # 1小时回收连接（防超时）
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=3600,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

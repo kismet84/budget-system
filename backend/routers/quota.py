@@ -17,6 +17,16 @@ def list_quotas(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     return quotas
 
 
+@router.get("/sections")
+def get_sections(db: Session = Depends(get_db)):
+    """获取所有分部（第一级分类路径）"""
+    all_sections = db.query(Quota.section).distinct().all()
+    prefixes = sorted(set(
+        s[0].split(' / ')[0] for s in all_sections if s[0]
+    ))
+    return [{"value": p, "label": p} for p in prefixes]
+
+
 @router.get("/{quota_id}/materials")
 def get_quota_materials(quota_id: str, db: Session = Depends(get_db)):
     """获取指定定额的材料清单"""
@@ -62,3 +72,4 @@ def search_quotas(body: QuotaSearchRequest, db: Session = Depends(get_db)):
         .all()
     )
     return quotas
+

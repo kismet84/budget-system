@@ -6,10 +6,15 @@ const api = axios.create({
   timeout: 15000,
 })
 
-export async function searchQuotas(query: string, topK: number = 3): Promise<AISearchResponse> {
+export async function searchQuotas(
+  query: string,
+  topK: number = 3,
+  sectionPrefix?: string
+): Promise<AISearchResponse> {
   const res = await api.post<AISearchResponse>('/api/v1/ai/search', {
     query,
     top_k: topK,
+    section_prefix: sectionPrefix || undefined,
   })
   return res.data
 }

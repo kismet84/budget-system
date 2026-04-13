@@ -19,6 +19,7 @@ class Quota(Base):
     quota_id = Column(String, unique=True, index=True)   # 如 "E1-1"
     category = Column(String, index=True)                # 专业类别
     unit = Column(String)                                 # 计量单位
+    quantity = Column(String, nullable=True)             # 数量前缀（如 "100"）
     work_content = Column(Text)                          # 工作内容
     section = Column(String)                             # 分部工程
     total_cost = Column(Float)                           # 全费用

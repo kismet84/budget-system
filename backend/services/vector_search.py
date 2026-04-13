@@ -60,7 +60,8 @@ def text_to_vector(text: str, api_key: str) -> List[float]:
 def search_by_vector(
     query_vector: List[float],
     top_k: int = 10,
-    category_filter: str = None
+    category_filter: str = None,
+    section_prefix: str = None
 ) -> List[dict]:
     """
     在 pgvector 中搜索与 query_vector 最相似的定额
@@ -69,6 +70,7 @@ def search_by_vector(
         query_vector: 查询向量（1024维）
         top_k: 返回数量
         category_filter: 可选，专业分类过滤
+        section_prefix: 可选，分部路径前缀过滤（如 "墙、柱面工程"）
 
     Returns:
         List[dict]: Top-K 定额列表（含相似度分数）
@@ -79,7 +81,7 @@ def search_by_vector(
     # SQL：使用余弦相似度 (cosine distance)
     sql = """
         SELECT
-            id, quota_id, category, unit, work_content, section,
+            id, quota_id, category, unit, quantity, work_content, section,
             total_cost, labor_fee, material_fee, machinery_fee, management_fee, tax,
             project_name, source_file,
             1 - (embedding <=> %s::vector) AS similarity
@@ -91,6 +93,10 @@ def search_by_vector(
     if category_filter:
         sql += " AND category = %s"
         params.append(category_filter)
+
+    if section_prefix:
+        sql += " AND section LIKE %s"
+        params.append(section_prefix + "%")
 
     sql += " ORDER BY embedding <=> %s::vector LIMIT %s"
     params.extend([query_vector, top_k])
@@ -105,17 +111,18 @@ def search_by_vector(
             "quota_id": row[1],
             "category": row[2],
             "unit": row[3],
-            "work_content": row[4],
-            "section": row[5],
-            "total_cost": row[6],
-            "labor_fee": row[7],
-            "material_fee": row[8],
-            "machinery_fee": row[9],
-            "management_fee": row[10],
-            "tax": row[11],
-            "project_name": row[12],
-            "source_file": row[13],
-            "similarity": round(row[14], 4)
+            "quantity": row[4],
+            "work_content": row[5],
+            "section": row[6],
+            "total_cost": row[7],
+            "labor_fee": row[8],
+            "material_fee": row[9],
+            "machinery_fee": row[10],
+            "management_fee": row[11],
+            "tax": row[12],
+            "project_name": row[13],
+            "source_file": row[14],
+            "similarity": round(row[15], 4)
         })
 
     cur.close()
@@ -125,7 +132,8 @@ def search_by_vector(
 
 def search_by_keyword(
     keyword: str,
-    top_k: int = 20
+    top_k: int = 20,
+    section_prefix: str = None
 ) -> List[dict]:
     """
     关键词全文搜索（作为向量搜索的补充）
@@ -143,13 +151,17 @@ def search_by_keyword(
     # Try exact quota_id match first (avoids substring false positives like "A10-51" matching "A15-51")
     exact_sql = """
         SELECT
-            id, quota_id, category, unit, work_content, section,
+            id, quota_id, category, unit, quantity, work_content, section,
             total_cost, labor_fee, material_fee, machinery_fee, management_fee, tax,
             project_name, source_file
         FROM quotas
         WHERE embedding IS NOT NULL AND quota_id = %s
     """
-    cur.execute(exact_sql, (keyword.strip(),))
+    exact_params = [keyword.strip()]
+    if section_prefix:
+        exact_sql += " AND section LIKE %s"
+        exact_params.append(section_prefix + "%")
+    cur.execute(exact_sql, exact_params)
     exact_row = cur.fetchone()
     if exact_row:
         cur.close()
@@ -159,24 +171,24 @@ def search_by_keyword(
             "quota_id": exact_row[1],
             "category": exact_row[2],
             "unit": exact_row[3],
-            "work_content": exact_row[4],
-            "section": exact_row[5],
-            "total_cost": exact_row[6],
-            "labor_fee": exact_row[7],
-            "material_fee": exact_row[8],
-            "machinery_fee": exact_row[9],
-            "management_fee": exact_row[10],
-            "tax": exact_row[11],
-            "project_name": exact_row[12],
-            "source_file": exact_row[13],
+            "quantity": exact_row[4],
+            "work_content": exact_row[5],
+            "section": exact_row[6],
+            "total_cost": exact_row[7],
+            "labor_fee": exact_row[8],
+            "material_fee": exact_row[9],
+            "machinery_fee": exact_row[10],
+            "management_fee": exact_row[11],
+            "tax": exact_row[12],
+            "project_name": exact_row[13],
+            "source_file": exact_row[14],
             "similarity": None
         }]
 
     # Fall back to substring/ILIKE search
-    cur.execute(
-        """
+    keyword_sql = """
         SELECT
-            id, quota_id, category, unit, work_content, section,
+            id, quota_id, category, unit, quantity, work_content, section,
             total_cost, labor_fee, material_fee, machinery_fee, management_fee, tax,
             project_name, source_file
         FROM quotas
@@ -184,10 +196,14 @@ def search_by_keyword(
             work_content ILIKE %s
             OR section ILIKE %s
             OR quota_id ILIKE %s
-        LIMIT %s
-        """,
-        (f"%{keyword}%", f"%{keyword}%", f"%{keyword}%", top_k)
-    )
+    """
+    keyword_params = [f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"]
+    if section_prefix:
+        keyword_sql += " AND section LIKE %s"
+        keyword_params.append(section_prefix + "%")
+    keyword_sql += " LIMIT %s"
+    keyword_params.append(top_k)
+    cur.execute(keyword_sql, keyword_params)
     rows = cur.fetchall()
 
     results = []
@@ -197,16 +213,17 @@ def search_by_keyword(
             "quota_id": row[1],
             "category": row[2],
             "unit": row[3],
-            "work_content": row[4],
-            "section": row[5],
-            "total_cost": row[6],
-            "labor_fee": row[7],
-            "material_fee": row[8],
-            "machinery_fee": row[9],
-            "management_fee": row[10],
-            "tax": row[11],
-            "project_name": row[12],
-            "source_file": row[13],
+            "quantity": row[4],
+            "work_content": row[5],
+            "section": row[6],
+            "total_cost": row[7],
+            "labor_fee": row[8],
+            "material_fee": row[9],
+            "machinery_fee": row[10],
+            "management_fee": row[11],
+            "tax": row[12],
+            "project_name": row[13],
+            "source_file": row[14],
             "similarity": None
         })
 
@@ -219,7 +236,8 @@ def hybrid_search(
     query_vector: List[float],
     keyword: str,
     top_k: int = 10,
-    vector_weight: float = 0.7
+    vector_weight: float = 0.7,
+    section_prefix: str = None
 ) -> List[dict]:
     """
     混合搜索：向量相似度（vector_weight）+ 关键词匹配（1 - vector_weight）
@@ -233,8 +251,8 @@ def hybrid_search(
     keyword_weight = 1.0 - vector_weight
 
     # ========== 第一步：并行向量搜索 + 关键词搜索 ==========
-    vector_results = search_by_vector(query_vector, top_k * 3)
-    keyword_results = search_by_keyword(keyword, top_k * 3)
+    vector_results = search_by_vector(query_vector, top_k * 3, section_prefix=section_prefix)
+    keyword_results = search_by_keyword(keyword, top_k * 3, section_prefix=section_prefix)
 
     # 构建结果字典（按 id 去重）
     all_results: dict[int, dict] = {}

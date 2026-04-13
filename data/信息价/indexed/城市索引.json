@@ -1,0 +1,128 @@
+[
+  {
+    "city": "仙桃市",
+    "count": 1150,
+    "month_count": 3,
+    "material_count": 369,
+    "price_avg": 927.72
+  },
+  {
+    "city": "十堰市",
+    "count": 2383,
+    "month_count": 12,
+    "material_count": 210,
+    "price_avg": 1596.29
+  },
+  {
+    "city": "咸宁市",
+    "count": 2586,
+    "month_count": 12,
+    "material_count": 207,
+    "price_avg": 1597.44
+  },
+  {
+    "city": "天门市",
+    "count": 688,
+    "month_count": 2,
+    "material_count": 107,
+    "price_avg": 1138.92
+  },
+  {
+    "city": "孝感市",
+    "count": 4476,
+    "month_count": 12,
+    "material_count": 350,
+    "price_avg": 1111.26
+  },
+  {
+    "city": "宜昌市",
+    "count": 2467,
+    "month_count": 12,
+    "material_count": 231,
+    "price_avg": 1439.94
+  },
+  {
+    "city": "恩施州",
+    "count": 722,
+    "month_count": 2,
+    "material_count": 94,
+    "price_avg": 1432.61
+  },
+  {
+    "city": "恩施市",
+    "count": 2061,
+    "month_count": 10,
+    "material_count": 159,
+    "price_avg": 1603.23
+  },
+  {
+    "city": "武汉市",
+    "count": 6540,
+    "month_count": 12,
+    "material_count": 664,
+    "price_avg": 959.19
+  },
+  {
+    "city": "潜江市",
+    "count": 742,
+    "month_count": 2,
+    "material_count": 110,
+    "price_avg": 1289.91
+  },
+  {
+    "city": "神农架林区",
+    "count": 1640,
+    "month_count": 12,
+    "material_count": 113,
+    "price_avg": 2467.38
+  },
+  {
+    "city": "荆州市",
+    "count": 4353,
+    "month_count": 12,
+    "material_count": 467,
+    "price_avg": 1026.38
+  },
+  {
+    "city": "荆门市",
+    "count": 1908,
+    "month_count": 12,
+    "material_count": 176,
+    "price_avg": 1629.58
+  },
+  {
+    "city": "襄阳市",
+    "count": 3721,
+    "month_count": 12,
+    "material_count": 367,
+    "price_avg": 1155.08
+  },
+  {
+    "city": "鄂州市",
+    "count": 5210,
+    "month_count": 12,
+    "material_count": 509,
+    "price_avg": 1027.87
+  },
+  {
+    "city": "随州市",
+    "count": 3642,
+    "month_count": 12,
+    "material_count": 339,
+    "price_avg": 1305.33
+  },
+  {
+    "city": "黄冈市",
+    "count": 5762,
+    "month_count": 12,
+    "material_count": 433,
+    "price_avg": 1031.39
+  },
+  {
+    "city": "黄石市",
+    "count": 4006,
+    "month_count": 12,
+    "material_count": 354,
+    "price_avg": 1140.09
+  }
+]

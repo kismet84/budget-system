@@ -1,40 +1,10 @@
-# Python
+backend/venv/
 __pycache__/
-*.py[cod]
 *.pyc
 .env
+*.egg-info/
 .venv/
-venv/
-*.db
-*.sqlite
-
-# Node
 node_modules/
-frontend/node_modules/
-
-# Build
 dist/
 build/
-*.egg-info/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Large data files
-data/
-graphify-out/
-
-# Test
-frontend/test-results/
-
-# PM2 / Scripts
-ecosystem.config.js
-start.sh
-stop.sh
+*.log

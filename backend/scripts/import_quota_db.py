@@ -74,23 +74,25 @@ def import_data(json_path: str):
                 # ---- 插入 quotas 表 ----
                 cur.execute("""
                     INSERT INTO quotas (
-                        quota_id, category, unit, work_content, section,
+                        quota_id, category, unit, quantity, project_name, work_content, section,
                         total_cost, labor_fee, material_fee, machinery_fee,
                         management_fee, tax,
                         source_file
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (quota_id) DO NOTHING
                 """, (
                     quota_id,
-                    r.get("category"),            # 专业类别（一级分部）
+                    r.get("category"),
                     r.get("计量单位"),
+                    r.get("计量数量"),
+                    r.get("项目名称"),
                     r.get("工作内容"),
-                    r.get("section"),             # 完整三级路径（分部/子分部/分项）
+                    r.get("section"),
                     num(r.get("全费用")),
                     num(r.get("其中人工费")),
                     num(r.get("材料费")),
                     num(r.get("机械费")),
-                    num(r.get("费用")),           # 管理费（含利润、规费）
+                    num(r.get("费用")),
                     num(r.get("增值税")),
                     r.get("source_file"),
                 ))

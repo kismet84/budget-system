@@ -17,7 +17,7 @@ from database import get_db
 from config import settings
 from services.llm_parse import parse_construction_text
 from services.vector_search import hybrid_search, text_to_vector, search_by_keyword, tokenize_chinese
-from services.price_agg import aggregate_top_quotas, format_quota_response
+from services.price_agg import aggregate_top_quotas, format_quota_response, get_connection
 from services.rerank import rerank
 
 router = APIRouter(prefix="/ai", tags=["AI 语义搜索"])
@@ -29,6 +29,7 @@ class AISearchRequest(BaseModel):
     top_k: int = 3                   # 返回数量
     category: Optional[str] = None     # 可选，专业分类过滤
     min_similarity: float = 0.0      # 相似度阈值过滤
+    section_prefix: Optional[str] = None  # 可选，分部路径前缀过滤
 
 
 class ParsedParams(BaseModel):
@@ -49,6 +50,7 @@ class QuotaResult(BaseModel):
     work_content: str
     section: str
     unit: str
+    quantity: Optional[str] = None
     total_cost: float
     labor_fee: Optional[float]
     material_fee: Optional[float]
@@ -57,7 +59,7 @@ class QuotaResult(BaseModel):
     tax: Optional[float]
     project_name: Optional[str]
     similarity: Optional[float]
-    rerank_score: Optional[float]
+    rerank_score: Optional[float] = None
     materials_count: int
     total_material_cost: Optional[float]
     reference_price: Optional[float]
@@ -102,6 +104,52 @@ async def ai_semantic_search(
 
     # ========== Step 2: 生成查询向量 ==========
     search_keyword = parsed.get("search_keyword") or body.query
+    raw_query = body.query.strip()
+
+    # 检测是否为精确 quota_id 查询（直接用 quota_id 搜索）
+    # 此时直接走 DB 精确查询，不走向量搜索，避免向量距离过大导致排序错误
+    exact_quota_id = None
+    if re.match(r'^[A-Z]\d+-\d+$', raw_query, re.IGNORECASE):
+        # 精确匹配 quota_id，跳过向量搜索
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, quota_id, category, unit, quantity, work_content, section, "
+            "total_cost, labor_fee, material_fee, machinery_fee, management_fee, tax, "
+            "project_name, source_file FROM quotas WHERE UPPER(quota_id) = UPPER(%s) LIMIT 1",
+            (raw_query,)
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            exact_quota_id = row[1]
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM materials WHERE quota_id = %s", (row[1],))
+            mats_count = cur.fetchone()[0]
+            cur.close()
+            conn.close()
+            exact_result = {
+                "id": row[0], "quota_id": row[1], "category": row[2], "unit": row[3],
+                "quantity": row[4], "work_content": row[5], "section": row[6],
+                "total_cost": row[7], "labor_fee": row[8], "material_fee": row[9],
+                "machinery_fee": row[10], "management_fee": row[11], "tax": row[12],
+                "project_name": row[13], "source_file": row[14],
+                "raw_similarity": 1.0, "similarity": 1.0, "rerank_score": None,
+                "materials_count": mats_count,
+            }
+            try:
+                enriched = aggregate_top_quotas([exact_result])
+                exact_result_fmt = format_quota_response(enriched[0])
+            except Exception:
+                exact_result_fmt = format_quota_response(exact_result)
+            return AISearchResponse(
+                query=body.query, parsed=ParsedParams(**parsed),
+                results=[exact_result_fmt], total=1,
+                warning="精确 quota_id 查询（直接匹配）"
+            )
+        # 没查到也继续向量搜索
 
     try:
         query_vector = await asyncio.to_thread(text_to_vector, search_keyword, settings.SILICONFLOW_API_KEY)
@@ -129,7 +177,8 @@ async def ai_semantic_search(
             query_vector=query_vector,
             keyword=search_keyword,
             top_k=body.top_k * 2,  # 多取一些，后面筛选
-            vector_weight=0.7
+            vector_weight=0.7,
+            section_prefix=body.section_prefix
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"向量检索失败: {e}")
@@ -242,7 +291,8 @@ async def ai_semantic_search(
         boost_amt = min(boost_amt, 0.5)
         raw_sim = r.get("similarity") or 0
         r["raw_similarity"] = raw_sim
-        r["similarity"] = min(raw_sim + boost_amt, 1.0)
+        # 避免负相似度导致排序错误
+        r["similarity"] = min(raw_sim + boost_amt, 1.0) if raw_sim >= 0 else boost_amt
 
     # 重新排序
     vector_results.sort(key=lambda x: x.get("similarity") or 0, reverse=True)
@@ -256,8 +306,15 @@ async def ai_semantic_search(
         results = [format_quota_response(q) for q in vector_results]
 
     # ========== Step 5.5: 二阶段检索（Rerank）==========
-    # 对候选结果进行 Rerank 精排，过采样4倍
-    if results:
+    # 精确 quota_id 匹配的结果不受 Rerank 干扰，直接排在最前
+    exact_quota_ids = set()
+    for r in results:
+        qid = (r.get("quota_id") or "").strip()
+        if qid and qid == raw_query:
+            exact_quota_ids.add(qid)
+
+    if results and not exact_quota_ids:
+        # 无精确匹配时正常 Rerank
         oversample = body.top_k * 4
         candidates = results[:oversample]
         doc_texts = [
@@ -272,15 +329,19 @@ async def ai_semantic_search(
         ]
         try:
             reranked = await asyncio.to_thread(rerank, body.query, doc_texts, top_n=body.top_k)
-            # 按 rerank 分数重新排序
             rerank_map = {rr["index"]: rr["relevance_score"] for rr in reranked}
             for i, r in enumerate(candidates):
                 r["rerank_score"] = rerank_map.get(i, 0.0)
-            # 只保留 reranked 的结果（保持 rerank 顺序）
             reranked_ids = [rr["index"] for rr in reranked]
             results = [candidates[i] for i in reranked_ids if i < len(candidates)]
         except Exception as ex:
             warnings.append(f"Rerank 失败: {ex}")
+
+    # 有精确匹配时，将精确命中的结果按 Boost 后的位置排在最前
+    if exact_quota_ids:
+        exact_results = [r for r in results if (r.get("quota_id") or "").strip() in exact_quota_ids]
+        other_results = [r for r in results if (r.get("quota_id") or "").strip() not in exact_quota_ids]
+        results = exact_results + other_results
 
     # 判断是否有信息价缺失
     info_price_missing = any(r.get('material_price_missing', False) for r in results)

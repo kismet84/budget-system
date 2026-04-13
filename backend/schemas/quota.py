@@ -7,6 +7,7 @@ class QuotaBase(BaseModel):
     quota_id: str
     category: Optional[str] = None
     unit: Optional[str] = None
+    quantity: Optional[str] = None
     work_content: Optional[str] = None
     section: Optional[str] = None
     project_name: Optional[str] = None

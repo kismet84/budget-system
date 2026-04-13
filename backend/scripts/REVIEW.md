@@ -234,15 +234,31 @@ DB = dict(host='/tmp', port=5432, database='budget_system', user='kis')
 
 ---
 
-## 八、缺失的 Script
+## 八、管理脚本（已完成 ✅）
 
-根据 BACKLOG 中 US-1（定额导入）的验收标准，**缺少以下管理脚本**：
+| 脚本 | 用途 | 状态 | 提交 |
+|------|------|------|------|
+| `backend/routers/quota_import.py` | 管理员上传 Excel 定额文件，写入 quotas 表 | ✅ 已完成 | `8a016d7` |
+| `backend/routers/price_import.py` | 信息价 Excel → material_prices 表 | ✅ 已完成 | `80625fa` |
+| `backend/routers/data_report.py` | 数据质量报告（覆盖率/缺失率/分部统计）| ✅ 已完成 | `e6a5eb0` |
 
-| 脚本 | 用途 | 优先级 |
-|------|------|--------|
-| Excel 上传解析脚本 | 管理员从 Web界面上传 Excel，自动触发 `import_quota_db.py` | P1 |
-| 信息价 Excel → DB 导入 | `parse_info_price.py` 修复后可对接 `price.py` 后端 | P1 |
-| 数据校验报告脚本 | 跑完导入后输出数据质量报告（覆盖率/缺失率）| P2 |
+### 前端页面
+
+| 页面 | 路由 |
+|------|------|
+| `AdminQuotaPage.tsx` | `/admin/quota` |
+| `AdminPricePage.tsx` | `/admin/price` |
+| `DataReportPage.tsx` | `/admin/report` |
+
+### API 端点
+
+| 端点 | 说明 |
+|------|------|
+| `POST /api/v1/admin/quota/import` | 上传 Excel 定额，幂等更新 |
+| `GET /api/v1/admin/quota/report` | 定额导入报告 + 统计 |
+| `POST /api/v1/admin/price/import` | 上传 Excel 信息价 |
+| `GET /api/v1/admin/price/report` | 信息价导入历史 |
+| `GET /api/v1/admin/report` | 数据质量总报告 |
 
 ---
 
@@ -287,3 +303,40 @@ rm backend/scripts/extract_unit_from_project_name.py
 # 验证无残留 .openclaw：
 grep -r '\.openclaw' backend/scripts/*.py && echo "还有残留" || echo "已全部清除"
 ```
+
+---
+
+## 十一、PM2 启动配置（2026-04-14 更新）
+
+`ecosystem.config.js`（当前生效配置）：
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: 'budget-api',
+      script: '/usr/local/bin/python3.11',
+      args: '-m uvicorn main:app --host 0.0.0.0 --port 8001 --reload',
+      cwd: '/Users/kis/.hermes/memory/projects/budget-system/backend',
+      watch: ['.'],
+      ignore_watch: ['venv/', '__pycache__/', '*.pyc', '.git/'],
+      env: { PYTHONPATH: '...' },
+    },
+    {
+      name: 'budget-frontend',
+      script: 'node_modules/.bin/vite',
+      args: '--port 5173 --mode production',
+      cwd: '/Users/kis/.hermes/memory/projects/budget-system/frontend',
+    },
+  ]
+};
+```
+
+| 进程 | 端口 | 热重载 |
+|------|------|--------|
+| `budget-api` | 8001 | ✅ `watching: enabled` |
+| `budget-frontend` | 5173 | ❌ |
+
+**重启命令**：`pm2 restart budget-api`（几秒内自动重载新代码）
+
+**⚠️ 注意**：Vite dev server（5173）在 PM2 下为 production 构建，`npm run build` 后需手动 `pm2 restart budget-frontend` 刷新。

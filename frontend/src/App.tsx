@@ -4,6 +4,7 @@ import DetailPage from './pages/DetailPage'
 import CartPage from './pages/CartPage'
 import MinePage from './pages/MinePage'
 import PricesPage from './pages/PricesPage'
+import DataReportPage from './pages/DataReportPage'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/mine" element={<MinePage />} />
+        <Route path="/admin/report" element={<DataReportPage />} />
       </Routes>
     </BrowserRouter>
   )

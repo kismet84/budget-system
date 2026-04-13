@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Loader2, BarChart3 } from 'lucide-react'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 const api = axios.create({
   baseURL: '',
@@ -69,8 +69,10 @@ export default function AdminPricePage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setReport(res.data)
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || '导入失败，请检查文件格式'
+    } catch (err: unknown) {
+      const msg = err instanceof AxiosError && err.response?.data?.detail
+        ? err.response.data.detail
+        : '导入失败，请检查文件格式'
       setReport({
         total_rows: 0,
         imported: 0,

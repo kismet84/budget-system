@@ -12,7 +12,7 @@ router = APIRouter(prefix="/quota", tags=["定额管理"])
 
 
 @router.get("/", response_model=List[QuotaResponse])
-def list_quotas(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+async def list_quotas(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """获取定额列表"""
     quotas = db.query(Quota).offset(skip).limit(limit).all()
     return quotas

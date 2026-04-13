@@ -20,7 +20,7 @@ export default function SearchPage() {
     fetch('/api/v1/quota/sections')
       .then(r => r.json())
       .then(data => setSections(data))
-      .catch(() => {})
+      .catch(() => setError('加载分部列表失败'))
   }, [])
 
   const handleSearch = async () => {

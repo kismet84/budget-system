@@ -21,9 +21,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_cors_origins = [
+    "http://localhost:5173",   # 前端开发服务器
+    "http://localhost:8501",  # Streamlit（已废弃，保留兼容性）
+]
+# 支持以逗号分隔的环境变量配置，如：http://localhost:5173,https://staging.example.com
+if os.environ.get("CORS_ORIGINS"):
+    _cors_origins.extend([o.strip() for o in os.environ["CORS_ORIGINS"].split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8501"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

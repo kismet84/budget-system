@@ -16,20 +16,20 @@ class Quota(Base):
     __tablename__ = "quotas"
 
     id = Column(Integer, primary_key=True, index=True)
-    quota_id = Column(String, unique=True, index=True)   # 如 "E1-1"
-    category = Column(String, index=True)                # 专业类别
-    unit = Column(String)                                 # 计量单位
-    quantity = Column(String, nullable=True)             # 数量前缀（如 "100"）
+    quota_id = Column(String(32), unique=True, index=True)   # 如 "E1-1"
+    category = Column(String(64), index=True)                # 专业类别
+    unit = Column(String(16))                                 # 计量单位
+    quantity = Column(String(16), nullable=True)             # 数量前缀（如 "100"）
     work_content = Column(Text)                          # 工作内容
-    section = Column(String)                             # 分部工程
+    section = Column(String(128))                        # 分部工程
     total_cost = Column(Float)                           # 全费用
     labor_fee = Column(Float)                            # 人工费
     material_fee = Column(Float)                         # 材料费
     machinery_fee = Column(Float)                        # 机械费
     management_fee = Column(Float)                        # 管理费（含利润、规费）
     tax = Column(Float)                                  # 增值税
-    source_file = Column(String)                          # 来源文件
-    project_name = Column(String)                         # 项目名称
+    source_file = Column(String(128))                    # 来源文件
+    project_name = Column(String(128))                   # 项目名称
     embedding = Column(Vector(1024) if Vector else LargeBinary, nullable=True)  # 向量嵌入 (1024维)
 
 
@@ -38,9 +38,9 @@ class Material(Base):
     __tablename__ = "materials"
 
     id = Column(Integer, primary_key=True, index=True)
-    quota_id = Column(String, index=True)               # 关联定额编号
-    name = Column(String)                                 # 材料/机械名称
-    unit = Column(String)                                 # 单位
+    quota_id = Column(String(32), index=True)           # 关联定额编号（已有索引）
+    name = Column(String(128))                            # 材料/机械名称
+    unit = Column(String(16))                            # 单位
     unit_price = Column(Float)                           # 单价
     consumption = Column(Float)                          # 消耗量
-    mat_type = Column(String)                            # 类型：材料 / 机械
+    mat_type = Column(String(16))                       # 类型：材料 / 机械

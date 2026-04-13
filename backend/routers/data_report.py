@@ -16,7 +16,7 @@ router = APIRouter(prefix="/admin", tags=["管理功能"])
 
 
 @router.get("/report")
-def get_data_report(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_data_report(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     返回数据质量报告 JSON
     包含：数据覆盖率、缺失字段统计、分部统计、价格统计、有效期标注

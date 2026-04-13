@@ -110,14 +110,15 @@ def parse_xlsx(path: str, month: str = None, city_cols = None):
                 if not seq_cell: continue
                 seq = get_val(seq_cell, strings)
                 if not isinstance(seq, (int, float)): continue
-                
-                code = get_val(cells.get(2), strings) or ""
-                name = get_val(cells.get(3), strings) or ""
-                spec = get_val(cells.get(4), strings) or ""
-                unit = get_val(cells.get(5), strings) or ""
-                
+
+                # 实际列号（从 Excel 实测）：1=序号,2=名称,3=规格,4=单位,5=城市1含税,6=城市1除税...
+                code = get_val(cells.get(1), strings) or ""   # 序号（当作材料编号用）
+                name = get_val(cells.get(2), strings) or ""    # 材料名称
+                spec = get_val(cells.get(3), strings) or ""   # 规格及型号
+                unit = get_val(cells.get(4), strings) or ""   # 单位
+
                 if not name: continue
-                
+
                 for city, col_idx in city_cols:
                     tax = get_val(cells.get(col_idx), strings)
                     notax = get_val(cells.get(col_idx + 1), strings)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, X, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { listPrices, createPrice, updatePrice, deletePrice, MaterialPrice, MaterialPriceCreate } from '../api/price'
+import { Search, Plus, X, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { listPrices, createPrice, updatePrice, deletePrice, getPriceHistory, MaterialPrice, MaterialPriceCreate, PriceHistoryPoint } from '../api/price'
 import BottomNav from '../components/BottomNav'
 
 const PRICE_TYPES = ['信息价', '企业价']
@@ -18,6 +19,9 @@ export default function PricesPage() {
   const [selectedPrice, setSelectedPrice] = useState<MaterialPrice | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [chartPrice, setChartPrice] = useState<MaterialPrice | null>(null)
+  const [chartData, setChartData] = useState<PriceHistoryPoint[]>([])
+  const [chartLoading, setChartLoading] = useState(false)
 
   const limit = 20
 
@@ -89,6 +93,20 @@ export default function PricesPage() {
       alert('保存失败')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleShowChart = async (price: MaterialPrice) => {
+    setChartPrice(price)
+    setChartLoading(true)
+    setChartData([])
+    try {
+      const data = await getPriceHistory(price.id)
+      setChartData(data)
+    } catch {
+      alert('加载历史走势失败')
+    } finally {
+      setChartLoading(false)
     }
   }
 
@@ -188,6 +206,13 @@ export default function PricesPage() {
                       <td className="py-2.5">
                         <div className="flex gap-2">
                           <button
+                            onClick={() => handleShowChart(price)}
+                            title="历史走势"
+                            className="text-slate-400 hover:text-blue-400 p-1"
+                          >
+                            <TrendingUp size={14} />
+                          </button>
+                          <button
                             onClick={() => handleEdit(price)}
                             className="text-slate-400 hover:text-white p-1"
                           >
@@ -239,6 +264,71 @@ export default function PricesPage() {
           onClose={() => setShowModal(false)}
           saving={saving}
         />
+      )}
+
+      {/* Price History Chart Modal */}
+      {chartPrice && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setChartPrice(null) }}
+        >
+          <div className="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <div>
+                <h2 className="text-white font-medium">价格走势</h2>
+                <div className="text-slate-400 text-xs mt-0.5">{chartPrice.name} · {chartPrice.region} · {chartPrice.price_type}</div>
+              </div>
+              <button onClick={() => setChartPrice(null)} className="text-slate-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              {chartLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 size={24} className="animate-spin text-slate-400" />
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="text-center text-slate-500 text-sm py-16">暂无历史数据</div>
+              ) : (
+                <>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: '#94a3b8', fontSize: 11 }}
+                          tickFormatter={(v: string) => v.slice(0, 7)}
+                        />
+                        <YAxis
+                          tick={{ fill: '#94a3b8', fontSize: 11 }}
+                          tickFormatter={(v: number) => v.toFixed(0)}
+                          width={50}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8, color: '#e2e8f0' }}
+                          formatter={(value: number) => [`¥${value.toFixed(2)}`, '单价']}
+                          labelFormatter={(label: string) => `日期：${label}`}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="price"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: '#3b82f6' }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-3 text-xs text-slate-400">
+                    共 {chartData.length} 个月数据 · 最高 ¥{Math.max(...chartData.map(d => d.price)).toFixed(2)} · 最低 ¥{Math.min(...chartData.map(d => d.price)).toFixed(2)}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <BottomNav />

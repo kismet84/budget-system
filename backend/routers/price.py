@@ -4,6 +4,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 
 from database import get_db
@@ -110,6 +111,64 @@ def delete_price(price_id: int, db: Session = Depends(get_db)):
     db.delete(record)
     db.commit()
     return None
+
+
+@router.get("/{price_id}/history")
+def get_price_history(
+    price_id: int,
+    by_spec: bool = Query(False, description="是否按规格分组返回多条线"),
+    db: Session = Depends(get_db),
+):
+    """
+    获取指定价格记录的历史走势。
+
+    - 默认（by_spec=False）：按日期升序返回所有记录点，
+      图表前端按规格(spec)分组渲染多条线。
+    - by_spec=True：每个规格返回一条线的数据。
+    """
+    price = db.query(MaterialPrice).filter(MaterialPrice.id == price_id).first()
+    if not price:
+        raise HTTPException(status_code=404, detail="记录不存在")
+
+    rows = (
+        db.query(MaterialPrice)
+        .filter(
+            MaterialPrice.name == price.name,
+            MaterialPrice.region == price.region,
+            MaterialPrice.price_type == price.price_type,
+            or_(MaterialPrice.is_active == True, MaterialPrice.is_active.is_(None)),
+        )
+        .order_by(MaterialPrice.specification, MaterialPrice.publication_date)
+        .all()
+    )
+
+    if not by_spec:
+        # 返回扁平列表，前端按 spec 分组
+        return [
+            {
+                "date": r.publication_date.isoformat() if r.publication_date else "",
+                "price": r.unit_price,
+                "specification": r.specification or "",
+            }
+            for r in rows
+        ]
+
+    # 按规格分组，每组一条线
+    from collections import OrderedDict
+    spec_map: dict = OrderedDict()
+    for r in rows:
+        key = r.specification or ""
+        if key not in spec_map:
+            spec_map[key] = []
+        spec_map[key].append({
+            "date": r.publication_date.isoformat() if r.publication_date else "",
+            "price": r.unit_price,
+        })
+
+    return [
+        {"specification": spec, "data": points}
+        for spec, points in spec_map.items()
+    ]
 
 
 @router.get("/lookup/{material_name}", response_model=List[MaterialPriceResponse])

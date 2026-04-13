@@ -75,3 +75,14 @@ export async function updatePrice(id: number, data: MaterialPriceUpdate): Promis
 export async function deletePrice(id: number): Promise<void> {
   await api.delete(`/api/v1/price/${id}`)
 }
+
+export interface PriceHistoryPoint {
+  date: string
+  price: number
+  specification: string
+}
+
+export async function getPriceHistory(priceId: number): Promise<PriceHistoryPoint[]> {
+  const res = await api.get<PriceHistoryPoint[]>(`/api/v1/price/${priceId}/history`)
+  return res.data
+}

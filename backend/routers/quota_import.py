@@ -9,12 +9,14 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from collections import defaultdict
 import openpyxl
 
 from database import get_db
+from core.security import get_current_user, require_role
 from models.quota import Quota, Material
 
 router = APIRouter(prefix="/admin/quota", tags=["定额管理-管理员"])
@@ -200,6 +202,7 @@ def import_records(db: Session, records: list[dict]) -> dict:
 def import_quota_excel(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_role("admin")),
 ):
     """
     上传 Excel 定额文件并导入数据库。
@@ -213,8 +216,15 @@ def import_quota_excel(
     if suffix not in ("xlsx", "xls"):
         raise HTTPException(status_code=400, detail="仅支持 .xlsx / .xls 文件")
 
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    content = file.file.read()
+    if len(content) > MAX_FILE_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"文件大小超过限制（最大 10MB，当前 {len(content) // 1024 // 1024}MB）"},
+        )
+
     try:
-        content = file.file.read()
         records = parse_excel_to_records(content)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Excel 解析失败: {e}")
@@ -242,7 +252,10 @@ def import_quota_excel(
 
 
 @router.get("/report")
-def get_import_report(db: Session = Depends(get_db)):
+def get_import_report(
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_role("admin")),
+):
     """获取最新导入报告及数据库当前统计"""
     # 当前数据库统计
     quota_total = db.query(func.count(Quota.id)).scalar() or 0

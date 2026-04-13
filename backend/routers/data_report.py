@@ -11,12 +11,16 @@ from typing import List, Dict, Any
 from database import get_db
 from models.quota import Quota
 from models.price import MaterialPrice
+from core.security import get_current_user, require_role
 
 router = APIRouter(prefix="/admin", tags=["管理功能"])
 
 
 @router.get("/report")
-async def get_data_report(db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_data_report(
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_role("admin")),
+) -> Dict[str, Any]:
     """
     返回数据质量报告 JSON
     包含：数据覆盖率、缺失字段统计、分部统计、价格统计、有效期标注

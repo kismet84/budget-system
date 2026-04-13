@@ -4,13 +4,18 @@
   - 信息价：官方发布的指导价
   - 企业价：企业自主采集的实际采购价
 """
-from sqlalchemy import Column, String, Float, Integer, Date, Boolean
+from sqlalchemy import Column, String, Float, Integer, Date, Boolean, UniqueConstraint
 from models.base import Base
 
 
 class MaterialPrice(Base):
     """材料信息价模型"""
     __tablename__ = "material_prices"
+    __table_args__ = (
+        # 防止重复导入：同名称+规格+地区+日期+价格类型 唯一
+        UniqueConstraint("name", "specification", "region", "publication_date", "price_type",
+                         name="uq_material_price_identity"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)              # 材料名称

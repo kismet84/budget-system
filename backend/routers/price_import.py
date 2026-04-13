@@ -9,10 +9,12 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from database import get_db
+from core.security import get_current_user, require_role
 from models.price import MaterialPrice
 from scripts.parse_info_price import parse_xlsx, get_month
 
@@ -35,19 +37,29 @@ async def import_price_excel(
     region: Optional[str] = Query(None, description="强制指定地区，默认从文件名/表格自动识别"),
     price_type: str = Query("信息价", description="价格类型：信息价/企业价"),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_role("admin")),
 ):
     """
     上传 Excel 文件，解析后批量导入到 material_prices 表
     """
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
     # 校验文件类型
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="仅支持 .xlsx 或 .xls 格式")
+
+    # 读取内容（限制大小）
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"文件大小超过限制（最大 10MB，当前 {len(content) // 1024 // 1024}MB）"},
+        )
 
     # 保存到临时文件
     suffix = os.path.splitext(file.filename)[1]
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp_path = tmp.name
-        content = await file.read()
         tmp.write(content)
 
     try:

@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 8501,
+    port: 5173,
     allowedHosts: ['.serveo.net', '.serveousercontent.com', 'www.hgmsg.cn'],
     proxy: {
       '/api': {

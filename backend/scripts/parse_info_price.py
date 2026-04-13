@@ -2,8 +2,8 @@
 """超快 xlsx 解析器 - 直接解析 xlsx 内部 XML"""
 import zipfile, xml.etree.ElementTree as ET, os, json, re, re as _re
 
-DATA_DIR = "/Users/kis/.openclaw/memory/projects/budget-system/date/"
-OUT_DIR  = "/Users/kis/.openclaw/memory/projects/budget-system/date_parsed/"
+DATA_DIR = "/Users/kis/.hermes/memory/projects/budget-system/data/信息价/raw/"
+OUT_DIR  = "/Users/kis/.hermes/memory/projects/budget-system/data/信息价/indexed/"
 os.makedirs(OUT_DIR, exist_ok=True)
 
 def get_month(f):

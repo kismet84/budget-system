@@ -1,9 +1,9 @@
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { Quota } from '../types/quota'
+import type { QuotaResult } from '../types/quota'
 
 interface Props {
-  quota: Quota
+  quota: QuotaResult
 }
 
 export default function QuotaDetail({ quota }: Props) {

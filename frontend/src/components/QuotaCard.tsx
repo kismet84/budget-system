@@ -37,7 +37,7 @@ export default function QuotaCard({ quota, rank, cachedResults }: Props) {
         </div>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           <span className="text-white font-bold text-lg">¥{quota.total_cost.toFixed(2)}</span>
-          <span className="text-slate-400 text-xs">{quota.quantity ? `${quota.quantity}${quota.unit}` : `/${quota.unit}`}</span>
+          <span className="text-slate-400 text-xs">/{quota.unit}</span>
         </div>
         <ChevronRight size={18} className="text-slate-500 mt-0.5 ml-1 shrink-0" />
       </div>

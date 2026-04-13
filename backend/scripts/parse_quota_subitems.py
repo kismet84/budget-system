@@ -11,9 +11,9 @@ import json
 from pathlib import Path
 
 # ============== 配置 ==============
-PDF_PATH = "/Users/kis/.openclaw/memory/projects/budget-system/data/定额/raw/装饰/《湖北省房屋建筑与装饰工程消耗量定额及全费用基价表》（装饰·措施）（2024）.pdf"
-PARSED_FILE = Path("/Users/kis/.openclaw/memory/projects/budget-system/data/定额/parsed/装饰_措施_全部.json")
-OUTPUT_FILE = Path("/Users/kis/.openclaw/memory/projects/budget-system/data/定额/project_names.json")
+PDF_PATH = "/Users/kis/.hermes/memory/projects/budget-system/data/定额/raw/装饰/《湖北省房屋建筑与装饰工程消耗量定额及全费用基价表》（装饰·措施）（2024）.pdf"
+PARSED_FILE = Path("/Users/kis/.hermes/memory/projects/budget-system/data/定额/parsed/装饰_措施_全部.json")
+OUTPUT_FILE = Path("/Users/kis/.hermes/memory/projects/budget-system/data/定额/project_names.json")
 
 # ============== 辅助函数 ==============
 def clean(v):

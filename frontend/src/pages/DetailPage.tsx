@@ -5,7 +5,7 @@ import type { QuotaResult, CartItem } from '../types/quota'
 
 export default function DetailPage() {
   const navigate = useNavigate()
-  const { quota_id } = useParams<{ quota_id: string }>()
+  useParams<{ quota_id: string }>()
   const addItem = useCartStore((s) => s.addItem)
   const items = useCartStore((s) => s.items)
 
@@ -28,13 +28,10 @@ export default function DetailPage() {
 
   const alreadyInCart = items.some((i) => i.quota_id === quota.quota_id)
 
-  const formatFee = (v: number | null | undefined, unit = '元') =>
-    v != null ? `¥${v.toFixed(2)}${unit}` : '—'
-
   const handleAdd = () => {
     const cartItem: CartItem = {
       quota_id: quota.quota_id,
-      project_name: quota.project_name,
+      project_name: quota.project_name ?? '未命名定额',
       section: quota.section,
       unit: quota.unit,
       quantity: 1,

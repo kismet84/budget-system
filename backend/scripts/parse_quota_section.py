@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 
 # ============== 配置 ==============
-PDF_PATH = "/Users/kis/.openclaw/memory/projects/budget-system/data/定额/raw/装饰/《湖北省房屋建筑与装饰工程消耗量定额及全费用基价表》（装饰·措施）（2024）.pdf"
-PAGE_NUMBERS_FILE = Path("/Users/kis/.openclaw/memory/projects/budget-system/data/定额/page_numbers.json")
-OUTPUT_FILE = Path("/Users/kis/.openclaw/memory/projects/budget-system/data/定额/section_names.json")
+PDF_PATH = "/Users/kis/.hermes/memory/projects/budget-system/data/定额/raw/装饰/《湖北省房屋建筑与装饰工程消耗量定额及全费用基价表》（装饰·措施）（2024）.pdf"
+PAGE_NUMBERS_FILE = Path("/Users/kis/.hermes/memory/projects/budget-system/data/定额/page_numbers.json")
+OUTPUT_FILE = Path("/Users/kis/.hermes/memory/projects/budget-system/data/定额/section_names.json")
 
 # ============== 辅助函数 ==============
 def clean_spaces(text):

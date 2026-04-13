@@ -3,14 +3,13 @@ module.exports = {
     {
       name: 'budget-api',
       script: '/usr/local/bin/python3.11',
-      args: '-m uvicorn main:app --host 0.0.0.0 --port 8001',
+      args: '-m uvicorn main:app --host 0.0.0.0 --port 8001 --reload',
       cwd: '/Users/kis/.hermes/memory/projects/budget-system/backend',
-    },
-    {
-      name: 'budget-web',
-      script: '/usr/local/bin/python3.11',
-      args: '-m streamlit run frontend/app.py --server.port 8501 --server.headless true',
-      cwd: '/Users/kis/.hermes/memory/projects/budget-system',
+      watch: ['.'],  // PM2 watch for faster restart
+      ignore_watch: ['venv/', '__pycache__/', '*.pyc', '.git/'],
+      env: {
+        PYTHONPATH: '/Users/kis/.hermes/memory/projects/budget-system/backend',
+      },
     },
     {
       name: 'budget-frontend',

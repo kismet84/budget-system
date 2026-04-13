@@ -340,3 +340,65 @@ module.exports = {
 **重启命令**：`pm2 restart budget-api`（几秒内自动重载新代码）
 
 **⚠️ 注意**：Vite dev server（5173）在 PM2 下为 production 构建，`npm run build` 后需手动 `pm2 restart budget-frontend` 刷新。
+
+---
+
+## 十二、安全审计（2026-04-14）
+
+### 审查结论
+
+二次审查 50 个问题，**大部分为误报**，实际确认修复 3 个 HIGH 问题：
+
+| # | 级别 | 问题 | 文件 | 状态 |
+|---|------|------|------|------|
+| H3 | HIGH | `material_prices` 无唯一约束（重复导入产生重复数据） | `models/price.py` | ✅ 已修复 |
+| H7 | HIGH | 文件上传无大小限制 | `price_import.py` + `quota_import.py` | ✅ 已修复 |
+| H9 | HIGH | 所有 admin 路由无认证（`get_current_user` 定义但未使用） | `data_report.py` + `price_import.py` + `quota_import.py` | ✅ 已修复 |
+
+### 误报说明
+
+| # | 原报告问题 | 误报原因 |
+|---|-----------|---------|
+| H1 | params 重复导致 LIMIT 错误 | 3个占位符配3个参数（`query_vector × 2 + top_k`），psycopg2 正确绑定 |
+| C3 | SQL注入 LIKE pattern | `section_prefix + "%"` 使用 psycopg2 参数化，完全安全 |
+| H2 | SQL注入 embedding | `str(emb)` 后参数化，psycopg2 强制转换字符串，无注入 |
+| H4 | `requests.post` 无 timeout | 已有 `timeout=30` |
+| H5/H6 | `urllib.urlopen` 无 timeout | 已有 `timeout=60`（`text_to_vector`） |
+| H8 | 路径穿越风险 | `splitext` 只取扩展名；文件名本身未用于路径拼接 |
+| H10 | warning 暴露 API key | 该行不存在或非关键路径 |
+| H11 | `resp.text` 暴露 API key | 在非200路径，且是调试信息 |
+| H12 | N+1 查询 | 两次独立 `db.query().scalar()` 是正常查询，非 N+1 |
+
+**C1/C2（JWT fallback + demo凭证）**：本地开发用途，已在代码注释中标注，非生产暴露。
+
+### 修复内容
+
+**H3 — 唯一约束**
+```python
+__table_args__ = (
+    UniqueConstraint("name", "specification", "region", "publication_date", "price_type",
+                     name="uq_material_price_identity"),
+)
+```
+
+**H7 — 文件大小限制（10MB）**
+```python
+MAX_FILE_SIZE = 10 * 1024 * 1024
+content = await file.read()
+if len(content) > MAX_FILE_SIZE:
+    return JSONResponse(status_code=413, ...)
+```
+
+**H9 — 认证中间件**
+所有 `/admin/` 路由加 `Depends(require_role("admin"))`：
+- `data_report.py`: `/api/v1/admin/report`
+- `price_import.py`: `/api/v1/admin/price/import`
+- `quota_import.py`: `/api/v1/admin/quota/import` + `/report`
+
+**验证**：`/api/v1/admin/report` 无 token → 401，有 admin token → 200 OK
+
+### 提交记录
+
+```
+827563b fix: 安全审计修复 — 认证/文件大小/唯一约束
+```

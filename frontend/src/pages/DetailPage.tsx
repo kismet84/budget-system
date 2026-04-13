@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, FolderPlus } from 'lucide-react'
+import { useState } from 'react'
 import { useCartStore } from '../store/cartStore'
+import { addQuotaToProject, listProjects, type Project } from '../api/project'
 import type { QuotaResult, CartItem } from '../types/quota'
 
 export default function DetailPage() {
@@ -8,6 +10,9 @@ export default function DetailPage() {
   useParams<{ quota_id: string }>()
   const addItem = useCartStore((s) => s.addItem)
   const items = useCartStore((s) => s.items)
+  const [showProjectPicker, setShowProjectPicker] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [addingProject, setAddingProject] = useState<number | null>(null)
 
   let quota: QuotaResult | null = null
   try {
@@ -27,6 +32,25 @@ export default function DetailPage() {
   }
 
   const alreadyInCart = items.some((i) => i.quota_id === quota.quota_id)
+
+  const handleOpenProjectPicker = async () => {
+    const data = await listProjects()
+    setProjects(data)
+    setShowProjectPicker(true)
+  }
+
+  const handleAddToProject = async (projectId: number) => {
+    setAddingProject(projectId)
+    try {
+      await addQuotaToProject(projectId, quota!.quota_id, 1)
+      setShowProjectPicker(false)
+      alert('已添加至项目')
+    } catch {
+      alert('添加失败')
+    } finally {
+      setAddingProject(null)
+    }
+  }
 
   const handleAdd = () => {
     const cartItem: CartItem = {
@@ -114,14 +138,63 @@ export default function DetailPage() {
             已加入清单
           </div>
         ) : (
-          <button
-            onClick={handleAdd}
-            className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl py-4 text-base font-medium transition-colors"
-          >
-            选用此定额
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleOpenProjectPicker}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl py-4 text-sm font-medium"
+            >
+              <FolderPlus size={16} />
+              加入项目
+            </button>
+            <button
+              onClick={handleAdd}
+              className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl py-4 text-sm font-medium"
+            >
+              加入清单
+            </button>
+          </div>
         )}
       </div>
+
+      {/* Project Picker Modal */}
+      {showProjectPicker && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
+          <div className="bg-slate-800 rounded-t-2xl w-full max-w-md px-4 pt-4 pb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-bold">加入项目</h2>
+              <button onClick={() => setShowProjectPicker(false)} className="text-slate-400">
+                ×
+              </button>
+            </div>
+            {projects.length === 0 ? (
+              <div className="text-center text-slate-500 text-sm py-6">
+                暂无项目，请先在「项目」页面创建
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {projects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleAddToProject(p.id)}
+                    disabled={addingProject !== null}
+                    className="w-full flex items-center justify-between bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white rounded-xl px-4 py-3 text-sm"
+                  >
+                    <div className="text-left">
+                      <div>{p.name}</div>
+                      <div className="text-slate-400 text-xs">{p.quota_count} 条定额</div>
+                    </div>
+                    {addingProject === p.id ? (
+                      <span className="text-slate-400 text-xs">添加中...</span>
+                    ) : (
+                      <span className="text-blue-400 text-xs">添加</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

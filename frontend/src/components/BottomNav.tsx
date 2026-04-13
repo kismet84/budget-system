@@ -7,7 +7,7 @@ export default function BottomNav() {
 
   const tabs = [
     { icon: Search, label: '搜索', path: '/' },
-    { icon: FolderOpen, label: '项目', path: '/cart' },
+    { icon: FolderOpen, label: '项目', path: '/projects' },
     { icon: User, label: '我的', path: '/mine' },
   ]
 

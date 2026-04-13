@@ -8,6 +8,7 @@ import PricesPage from './pages/PricesPage'
 import AdminPricePage from './pages/AdminPricePage'
 import DataReportPage from './pages/DataReportPage'
 import AdminQuotaPage from './pages/AdminQuotaPage'
+import ProjectsPage from './pages/ProjectsPage'
 
 function NotFoundPage() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/mine" element={<MinePage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/admin/report" element={<DataReportPage />} />
         <Route path="/admin/quota" element={<AdminQuotaPage />} />
         <Route path="/admin/price" element={<AdminPricePage />} />

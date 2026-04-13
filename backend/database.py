@@ -48,6 +48,8 @@ def init_db():
     # 导入所有模型以确保 metadata 包含所有表
     from models.quota import Quota, Material      # noqa
     from models.price import MaterialPrice        # noqa
+    from models.project import Project            # noqa
+    from models.project_quota import ProjectQuota  # noqa
 
     # 启用 pgvector 扩展（如果不存在）
     with engine.connect() as conn:

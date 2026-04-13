@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, text, func
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from models.quota import Quota
 from models.price import MaterialPrice
 from schemas.quota import QuotaResponse, QuotaSearchRequest
+from services.market_analysis import analyze_quota_market_price
 
 router = APIRouter(prefix="/quota", tags=["定额管理"])
 
@@ -86,4 +87,54 @@ def get_stats(db: Session = Depends(get_db)):
         "price_count": price_count,
         "vector_index_status": "已构建" if quota_count > 0 else "未构建",
     }
+
+
+@router.get("/{quota_id}/market-analysis")
+def get_quota_market_analysis(
+    quota_id: str,
+    region: Optional[str] = Query("武汉市", description="地区"),
+    price_type: Optional[str] = Query("信息价", description="价格类型：信息价/企业价"),
+    db: Session = Depends(get_db),
+):
+    """
+    按当前市场价重算指定定额的材料费，并与 PDF 标准材料费对比。
+
+    返回：材料明细市场价、各材料费差额、合计差额及涨跌幅度。
+    """
+    # 检查定额是否存在
+    quota = db.query(Quota).filter(Quota.quota_id == quota_id).first()
+    if not quota:
+        raise HTTPException(status_code=404, detail="定额不存在")
+
+    result = analyze_quota_market_price(db, quota_id, region=region, price_type=price_type)
+
+    # 附加：标准费用概览
+    result["quota_overview"] = {
+        "total_cost": quota.total_cost,
+        "labor_fee": quota.labor_fee,
+        "material_fee": quota.material_fee,
+        "machinery_fee": quota.machinery_fee,
+        "management_fee": quota.management_fee,
+        "tax": quota.tax,
+    }
+    # 用市场价材料费替换
+    if result["market_material_fee"] > 0:
+        market_total = (
+            (quota.labor_fee or 0)
+            + result["market_material_fee"]
+            + (quota.machinery_fee or 0)
+            + (quota.management_fee or 0)
+            + (quota.tax or 0)
+        )
+        result["market_total_cost"] = round(market_total, 4)
+        result["total_variance"] = round(market_total - (quota.total_cost or 0), 4)
+        result["total_variance_pct"] = round(
+            (result["total_variance"] / (quota.total_cost or 1)) * 100, 2
+        )
+    else:
+        result["market_total_cost"] = None
+        result["total_variance"] = None
+        result["total_variance_pct"] = None
+
+    return result
 

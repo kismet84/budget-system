@@ -93,6 +93,21 @@ export default function MinePage() {
             </div>
           </div>
 
+          {/* Admin: Quota Import */}
+          <button
+            onClick={() => navigate('/admin/quota')}
+            className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 text-left hover:border-slate-600 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Database size={20} className="text-green-400" />
+              <div>
+                <div className="text-white text-sm font-medium">定额导入</div>
+                <div className="text-slate-400 text-xs mt-0.5">Excel 定额文件导入</div>
+              </div>
+              <ChevronRight size={16} className="text-slate-600 ml-auto" />
+            </div>
+          </button>
+
           {/* Settings */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
             <div className="flex items-center gap-3">

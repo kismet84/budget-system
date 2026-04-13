@@ -36,6 +36,8 @@ app.include_router(ai_search.router, prefix=settings.API_V1_PREFIX)
 app.include_router(price.router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth.router)  # /auth/login 在根路径
 app.include_router(data_report.router, prefix=settings.API_V1_PREFIX)
+app.include_router(price_import.router, prefix=settings.API_V1_PREFIX)
+app.include_router(quota_import.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")

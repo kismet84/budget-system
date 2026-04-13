@@ -8,10 +8,17 @@
 用法：python3 scripts/extract_units_post.py
 """
 
-import re, json, sys
+import re, json, sys, os, psycopg2
+
+# 添加 backend 目录到 path 以便导入 config
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = SCRIPT_DIR
+PROJECT_DIR = os.path.dirname(BACKEND_DIR)
+sys.path.insert(0, BACKEND_DIR)
+
+from config import settings
 
 PROJECT_NAMES_PATH = '/Users/kis/.hermes/memory/projects/budget-system/data/定额/parsed/装饰/project_names.json'
-DB_CONFIG = dict(host='127.0.0.1', port=5432, database='budget_system', user='kis')
 
 # ============================================================
 # 工具函数（从 extract_units.py 统一实现）
@@ -117,14 +124,12 @@ def extract_unit_from_name(name: str) -> str | None:
 # ============================================================
 
 def main():
-    import psycopg2
-
     # 读取 project_names.json
     with open(PROJECT_NAMES_PATH, encoding='utf-8') as f:
         project_names = json.load(f)
 
     # 查数据库中 quantity=NULL 的条目
-    conn = psycopg2.connect(**DB_CONFIG)
+    conn = psycopg2.connect(settings.DATABASE_URL)
     cur = conn.cursor()
     cur.execute("SELECT quota_id, project_name FROM quotas WHERE quantity IS NULL OR unit IS NULL")
     null_rows = cur.fetchall()
@@ -166,7 +171,7 @@ def main():
                 print(f'  {qid}: {name}')
 
     # 写入数据库
-    conn = psycopg2.connect(**DB_CONFIG)
+    conn = psycopg2.connect(settings.DATABASE_URL)
     cur = conn.cursor()
     updated = 0
     for qid, val in results.items():

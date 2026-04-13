@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, text
+from sqlalchemy import or_, text, func
 from typing import List
 
 from database import get_db
 from models.quota import Quota
+from models.price import MaterialPrice
 from schemas.quota import QuotaResponse, QuotaSearchRequest
 
 router = APIRouter(prefix="/quota", tags=["定额管理"])
@@ -72,4 +73,17 @@ def search_quotas(body: QuotaSearchRequest, db: Session = Depends(get_db)):
         .all()
     )
     return quotas
+
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    """获取系统统计信息"""
+    quota_count = db.query(func.count(Quota.id)).scalar() or 0
+    price_count = db.query(func.count(MaterialPrice.id)).scalar() or 0
+    
+    return {
+        "quota_count": quota_count,
+        "price_count": price_count,
+        "vector_index_status": "已构建" if quota_count > 0 else "未构建",
+    }
 

@@ -26,8 +26,8 @@ async def list_quotas(
 
 
 @router.get("/sections")
-def get_sections(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """获取所有分部（第一级分类路径）"""
+def get_sections(db: Session = Depends(get_db)):
+    """获取所有分部（第一级分类路径）- 公开接口"""
     all_sections = db.query(Quota.section).distinct().all()
     prefixes = sorted(set(
         s[0].split(' / ')[0] for s in all_sections if s[0]

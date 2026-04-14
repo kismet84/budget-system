@@ -10,6 +10,7 @@ import DataReportPage from './pages/DataReportPage'
 import AdminQuotaPage from './pages/AdminQuotaPage'
 import ProjectsPage from './pages/ProjectsPage'
 import DevLogPage from './pages/DevLogPage'
+import LoginPage from './pages/LoginPage'
 
 function NotFoundPage() {
   return (
@@ -32,11 +33,11 @@ function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const role = localStorage.getItem('role')
 
   if (!token) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/login" replace />
   }
 
   return <>{children}</>
@@ -47,6 +48,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<SearchPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/detail/:quota_id" element={<DetailPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/prices" element={<PricesPage />} />

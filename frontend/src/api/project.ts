@@ -1,9 +1,4 @@
-import axios from 'axios'
-
-const api = axios.create({
-  baseURL: '',
-  timeout: 15000,
-})
+import api from './auth'
 
 export interface Project {
   id: number

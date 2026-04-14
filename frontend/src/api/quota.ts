@@ -1,10 +1,5 @@
-import axios from 'axios'
+import api from './auth'
 import type { AISearchResponse, QuotaResult } from '../types/quota'
-
-const api = axios.create({
-  baseURL: '',
-  timeout: 15000,
-})
 
 export async function searchQuotas(
   query: string,

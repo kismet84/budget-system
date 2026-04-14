@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings, Database, Github, ChevronRight, Loader2, ScrollText } from 'lucide-react'
+import { Settings, Database, Github, ChevronRight, Loader2, ScrollText, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import BottomNav from '../components/BottomNav'
@@ -39,6 +39,13 @@ export default function MinePage() {
     }
     fetchStats()
   }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('username')
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20">
@@ -133,6 +140,20 @@ export default function MinePage() {
               </div>
             </div>
           </div>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 text-left hover:border-red-500/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <LogOut size={20} className="text-red-400" />
+              <div>
+                <div className="text-white text-sm font-medium">退出登录</div>
+                <div className="text-slate-400 text-xs mt-0.5">清除登录信息并退出</div>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 

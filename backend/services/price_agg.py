@@ -2,13 +2,14 @@
 价格聚合服务
 从 materials 表聚合材料单价，结合信息价做参考报价
 """
-import psycopg2
-from typing import List, Optional
-from config import settings
+from typing import List, Optional, Tuple
+from database import SessionLocal
 
 
-def get_connection():
-    return psycopg2.connect(settings.DATABASE_URL)
+def get_connection() -> Tuple:
+    """使用 SQLAlchemy 连接池获取数据库连接，返回 (raw_conn, db_session)"""
+    db = SessionLocal()
+    return db.connection().connection, db
 
 
 def aggregate_material_prices(quota_id: str) -> dict:
@@ -25,52 +26,54 @@ def aggregate_material_prices(quota_id: str) -> dict:
             "unit": str
         }
     """
-    conn = get_connection()
-    cur = conn.cursor()
+    conn, db = get_connection()
+    try:
+        cur = conn.cursor()
 
-    cur.execute(
-        """
-        SELECT
-            m.name,
-            m.unit,
-            m.unit_price,
-            m.consumption,
-            m.mat_type,
-            q.unit as quota_unit
-        FROM materials m
-        JOIN quotas q ON m.quota_id = q.quota_id
-        WHERE m.quota_id = %s
-        ORDER BY m.mat_type, m.name
-        """,
-        (quota_id,)
-    )
-    rows = cur.fetchall()
+        cur.execute(
+            """
+            SELECT
+                m.name,
+                m.unit,
+                m.unit_price,
+                m.consumption,
+                m.mat_type,
+                q.unit as quota_unit
+            FROM materials m
+            JOIN quotas q ON m.quota_id = q.quota_id
+            WHERE m.quota_id = %s
+            ORDER BY m.mat_type, m.name
+            """,
+            (quota_id,)
+        )
+        rows = cur.fetchall()
 
-    materials = []
-    total_cost = 0.0
+        materials = []
+        total_cost = 0.0
 
-    for row in rows:
-        name, unit, unit_price, consumption, mat_type, quota_unit = row
-        cost = float(unit_price or 0) * float(consumption or 0)
-        total_cost += cost
-        materials.append({
-            "name": name,
-            "unit": unit,
-            "unit_price": float(unit_price or 0),
-            "consumption": float(consumption or 0),
-            "cost": round(cost, 2),
-            "type": mat_type
-        })
+        for row in rows:
+            name, unit, unit_price, consumption, mat_type, quota_unit = row
+            cost = float(unit_price or 0) * float(consumption or 0)
+            total_cost += cost
+            materials.append({
+                "name": name,
+                "unit": unit,
+                "unit_price": float(unit_price or 0),
+                "consumption": float(consumption or 0),
+                "cost": round(cost, 2),
+                "type": mat_type
+            })
 
-    cur.close()
-    conn.close()
+        cur.close()
 
-    return {
-        "quota_id": quota_id,
-        "materials": materials,
-        "total_material_cost": round(total_cost, 2),
-        "quota_unit": rows[0][5] if rows else None
-    }
+        return {
+            "quota_id": quota_id,
+            "materials": materials,
+            "total_material_cost": round(total_cost, 2),
+            "quota_unit": rows[0][5] if rows else None
+        }
+    finally:
+        db.close()
 
 
 def aggregate_top_quotas(quota_results: List[dict]) -> List[dict]:
@@ -89,28 +92,31 @@ def aggregate_top_quotas(quota_results: List[dict]) -> List[dict]:
     # 收集所有 quota_id，一次查询
     quota_ids = [q["quota_id"] for q in quota_results]
 
-    conn = get_connection()
-    cur = conn.cursor()
+    conn, db = get_connection()
+    try:
+        cur = conn.cursor()
 
-    # 批量 JOIN 查询
-    cur.execute("""
-        SELECT
-            m.quota_id,
-            m.name,
-            m.unit,
-            m.unit_price,
-            m.consumption,
-            m.mat_type,
-            q.unit as quota_unit
-        FROM materials m
-        JOIN quotas q ON m.quota_id = q.quota_id
-        WHERE m.quota_id = ANY(%s)
-        ORDER BY m.quota_id, m.mat_type, m.name
-    """, (quota_ids,))
+        # 批量 JOIN 查询
+        cur.execute("""
+            SELECT
+                m.quota_id,
+                m.name,
+                m.unit,
+                m.unit_price,
+                m.consumption,
+                m.mat_type,
+                q.unit as quota_unit
+            FROM materials m
+            JOIN quotas q ON m.quota_id = q.quota_id
+            WHERE m.quota_id = ANY(%s)
+            ORDER BY m.quota_id, m.mat_type, m.name
+        """, (quota_ids,))
 
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+        rows = cur.fetchall()
+        cur.close()
+
+    finally:
+        db.close()
 
     # 按 quota_id 分组
     materials_by_quota: dict[str, list] = {}

@@ -50,3 +50,11 @@ class Settings:
 
 # 全局单例
 settings = Settings()
+
+# ===== 启动时安全检查 =====
+if settings.JWT_SECRET == "CHANGE_ME_IN_PRODUCTION":
+    raise RuntimeError(
+        "P0 安全错误：JWT_SECRET 未配置。"
+        "请在 backend/.env 中设置 JWT_SECRET=<随机字符串>"
+        "禁止使用默认值启动生产服务。"
+    )

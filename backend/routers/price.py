@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from database import get_db
 from models.price import MaterialPrice
+from core.security import get_current_user
 from schemas.price import (
     MaterialPriceCreate,
     MaterialPriceUpdate,
@@ -27,6 +28,7 @@ def list_prices(
     region: Optional[str] = None,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     查询材料信息价列表，支持过滤：
@@ -50,7 +52,7 @@ def list_prices(
 
 
 @router.get("/{price_id}", response_model=MaterialPriceResponse)
-def get_price(price_id: int, db: Session = Depends(get_db)):
+def get_price(price_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """根据 ID 获取单条信息价"""
     price = db.query(MaterialPrice).filter(MaterialPrice.id == price_id).first()
     if not price:
@@ -59,7 +61,7 @@ def get_price(price_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=MaterialPriceResponse, status_code=201)
-def create_price(body: MaterialPriceCreate, db: Session = Depends(get_db)):
+def create_price(body: MaterialPriceCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """新增一条材料信息价记录"""
     record = MaterialPrice(**body.model_dump())
     db.add(record)
@@ -72,6 +74,7 @@ def create_price(body: MaterialPriceCreate, db: Session = Depends(get_db)):
 def create_prices_batch(
     body: List[MaterialPriceCreate],
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """批量新增材料信息价记录"""
     records = [MaterialPrice(**item.model_dump()) for item in body]
@@ -87,6 +90,7 @@ def update_price(
     price_id: int,
     body: MaterialPriceUpdate,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """更新单条信息价（支持部分更新）"""
     record = db.query(MaterialPrice).filter(MaterialPrice.id == price_id).first()
@@ -103,7 +107,7 @@ def update_price(
 
 
 @router.delete("/{price_id}", status_code=204)
-def delete_price(price_id: int, db: Session = Depends(get_db)):
+def delete_price(price_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """删除单条信息价（物理删除）"""
     record = db.query(MaterialPrice).filter(MaterialPrice.id == price_id).first()
     if not record:
@@ -118,6 +122,7 @@ def get_price_history(
     price_id: int,
     by_spec: bool = Query(False, description="是否按规格分组返回多条线"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取指定价格记录的历史走势。
@@ -177,6 +182,7 @@ def lookup_price(
     region: str = Query("武汉市"),
     price_type: str = Query("信息价"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     根据材料名称查询最新信息价（供 price_agg 调用）

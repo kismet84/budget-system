@@ -1,26 +1,39 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FolderPlus } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCartStore } from '../store/cartStore'
 import { addQuotaToProject, listProjects, type Project } from '../api/project'
+import { getQuota } from '../api/quota'
 import type { QuotaResult, CartItem } from '../types/quota'
 
 export default function DetailPage() {
   const navigate = useNavigate()
-  useParams<{ quota_id: string }>()
+  const { quota_id } = useParams<{ quota_id: string }>()
   const addItem = useCartStore((s) => s.addItem)
   const items = useCartStore((s) => s.items)
   const [showProjectPicker, setShowProjectPicker] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [addingProject, setAddingProject] = useState<number | null>(null)
+  const [quota, setQuota] = useState<QuotaResult | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  let quota: QuotaResult | null = null
-  try {
-    const raw = sessionStorage.getItem('quota-detail')
-    quota = raw ? (JSON.parse(raw) as QuotaResult) : null
-  } catch (err) {
-    console.warn('[DetailPage] sessionStorage 读取失败:', err)
-    quota = null
+  useEffect(() => {
+    if (!quota_id) {
+      setLoading(false)
+      return
+    }
+    getQuota(quota_id)
+      .then(setQuota)
+      .catch(() => setQuota(null))
+      .finally(() => setLoading(false))
+  }, [quota_id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
+      </div>
+    )
   }
 
   if (!quota) {

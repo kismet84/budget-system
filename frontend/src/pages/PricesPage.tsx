@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Plus, X, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { listPrices, createPrice, updatePrice, deletePrice, getPriceHistory, MaterialPrice, MaterialPriceCreate, PriceHistoryPoint } from '../api/price'
 import BottomNav from '../components/BottomNav'
 
 const PRICE_TYPES = ['信息价', '企业价']
 const REGIONS = ['武汉市', '黄石市', '鄂州市', '黄冈市', '荆州市', '宜昌市', '襄阳市', '十堰市', '荆门市', '孝感市', '咸宁市', '随州市', '恩施州', '仙桃市', '潜江市', '天门市', '神农架林区']
+
+function isPriceExpired(publicationDate: string): boolean {
+  const pubDate = new Date(publicationDate)
+  const now = new Date()
+  const diffDays = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24)
+  return diffDays > 30
+}
 
 export default function PricesPage() {
   const [prices, setPrices] = useState<MaterialPrice[]>([])
@@ -191,9 +198,18 @@ export default function PricesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {prices.map((price) => (
-                    <tr key={price.id} className="text-white border-b border-slate-800">
-                      <td className="py-2.5 pr-3 max-w-[120px] truncate">{price.name}</td>
+                  {prices.map((price) => {
+                    const expired = isPriceExpired(price.publication_date)
+                    return (
+                    <tr key={price.id} className={`border-b border-slate-800 ${expired ? 'text-red-400' : 'text-white'}`}>
+                      <td className="py-2.5 pr-3 max-w-[120px] truncate">
+                        {price.name}
+                        {expired && (
+                          <span className="ml-1.5 text-xs bg-red-900 text-red-300 px-1 py-0.5 rounded">
+                            已过期
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2.5 pr-3 text-slate-400 max-w-[100px] truncate">{price.specification}</td>
                       <td className="py-2.5 pr-3 text-slate-400">{price.unit}</td>
                       <td className="py-2.5 pr-3 text-right text-blue-400">¥{price.unit_price.toFixed(2)}</td>
@@ -228,7 +244,8 @@ export default function PricesPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -307,8 +324,8 @@ export default function PricesPage() {
                         />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: 8, color: '#e2e8f0' }}
-                          formatter={(value: number) => [`¥${value.toFixed(2)}`, '单价']}
-                          labelFormatter={(label: string) => `日期：${label}`}
+                          formatter={(value) => [`¥${Number(value).toFixed(2)}`, '单价']}
+                          labelFormatter={(label) => `日期：${label}`}
                         />
                         <Line
                           type="monotone"

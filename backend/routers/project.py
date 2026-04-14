@@ -288,3 +288,158 @@ def update_quota_quantity(
     row.quantity = quantity
     db.commit()
     return {"quota_id": quota_id, "quantity": quantity}
+
+
+# ===== 预算书 PDF 导出 =====
+
+@router.get("/{project_id}/export-pdf")
+def export_project_pdf(
+    project_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    导出项目预算书 PDF
+    包含封面和分部分项清单
+    """
+    from datetime import datetime
+    from fastapi.responses import StreamingResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+
+    # 获取项目数据
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    # 获取定额列表
+    rows = db.execute(
+        text("""
+            SELECT
+                q.quota_id,
+                q.project_name,
+                q.section,
+                q.unit,
+                q.total_cost,
+                q.labor_fee,
+                q.material_fee,
+                q.machinery_fee,
+                q.management_fee,
+                q.tax,
+                pq.quantity
+            FROM project_quotas pq
+            JOIN quotas q ON q.quota_id = pq.quota_id
+            WHERE pq.project_id = :pid
+            ORDER BY pq.id
+        """),
+        {"pid": project_id}
+    ).fetchall()
+
+    # 生成 PDF
+    buffer = __import__('io').BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=20*mm,
+        leftMargin=20*mm,
+        topMargin=20*mm,
+        bottomMargin=20*mm,
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        alignment=TA_CENTER,
+        spaceAfter=30,
+    )
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=20,
+        spaceAfter=10,
+    )
+
+    story = []
+
+    # 封面
+    story.append(Spacer(1, 50*mm))
+    story.append(Paragraph(project.name, title_style))
+    story.append(Spacer(1, 10*mm))
+    story.append(Paragraph("预算书", subtitle_style))
+    story.append(Spacer(1, 30*mm))
+    story.append(Paragraph(f"项目地区：{project.region or '—'}", subtitle_style))
+    story.append(Paragraph(f"预算周期：{project.budget_period or '—'}", subtitle_style))
+    story.append(Paragraph(f"编制日期：{datetime.now().strftime('%Y年%m月%d日')}", subtitle_style))
+    story.append(Paragraph(f"编制人：{project.created_by or '—'}", subtitle_style))
+    story.append(Spacer(1, 20*mm))
+
+    # 金额汇总
+    summary = _project_summary(db, project_id)
+    story.append(Paragraph(f"定额数量：{summary['quota_count']}", subtitle_style))
+    story.append(Paragraph(f"预算总额：¥{summary['total_cost']:,.2f}", subtitle_style))
+
+    story.append(PageBreak())
+
+    # 分部分项清单
+    story.append(Paragraph("分部分项清单", heading_style))
+    story.append(Spacer(1, 5*mm))
+
+    # 表格数据
+    table_data = [["序号", "定额编号", "名称", "单位", "数量", "单价", "合价"]]
+    for idx, r in enumerate(rows, 1):
+        total = float(r[4] or 0) * float(r[10] or 1)
+        table_data.append([
+            str(idx),
+            r[0],
+            r[1][:20] + "..." if len(str(r[1])) > 20 else r[1],
+            r[3],
+            f"{r[10]:.2f}",
+            f"¥{float(r[4] or 0):.2f}",
+            f"¥{total:.2f}",
+        ])
+
+    # 添加合计行
+    table_data.append(["", "", "", "", "", "合计", f"¥{summary['total_cost']:,.2f}"])
+
+    t = Table(table_data, colWidths=[15*mm, 35*mm, 50*mm, 20*mm, 20*mm, 25*mm, 25*mm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#334155')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -2), 0.5, colors.grey),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#475569')),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(t)
+
+    doc.build(story)
+    buffer.seek(0)
+
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=预算书_{project.name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        }
+    )

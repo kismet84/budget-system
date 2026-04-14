@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AISearchResponse } from '../types/quota'
+import type { AISearchResponse, QuotaResult } from '../types/quota'
 
 const api = axios.create({
   baseURL: '',
@@ -16,5 +16,10 @@ export async function searchQuotas(
     top_k: topK,
     section_prefix: sectionPrefix || undefined,
   })
+  return res.data
+}
+
+export async function getQuota(quotaId: string): Promise<QuotaResult> {
+  const res = await api.get<QuotaResult>(`/api/v1/quota/${quotaId}`)
   return res.data
 }

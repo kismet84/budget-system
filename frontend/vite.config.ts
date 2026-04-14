@@ -9,7 +9,7 @@ export default defineConfig({
     allowedHosts: ['.serveo.net', '.serveousercontent.com', 'www.hgmsg.cn'],
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
       }
     },

@@ -15,6 +15,7 @@ import re
 
 from database import get_db
 from config import settings
+from core.security import get_current_user
 from services.llm_parse import parse_construction_text
 from services.vector_search import hybrid_search, text_to_vector, search_by_keyword, tokenize_chinese
 from services.price_agg import aggregate_top_quotas, format_quota_response, get_connection
@@ -79,7 +80,8 @@ class AISearchResponse(BaseModel):
 @router.post("/search", response_model=AISearchResponse)
 async def ai_semantic_search(
     body: AISearchRequest,
-    db=Depends(get_db)
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     AI 语义搜索主入口

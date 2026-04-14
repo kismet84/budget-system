@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
 import SearchPage from './pages/SearchPage'
 import DetailPage from './pages/DetailPage'
@@ -9,6 +9,7 @@ import AdminPricePage from './pages/AdminPricePage'
 import DataReportPage from './pages/DataReportPage'
 import AdminQuotaPage from './pages/AdminQuotaPage'
 import ProjectsPage from './pages/ProjectsPage'
+import DevLogPage from './pages/DevLogPage'
 
 function NotFoundPage() {
   return (
@@ -18,6 +19,27 @@ function NotFoundPage() {
       <p className="text-slate-400">页面不存在</p>
     </div>
   )
+}
+
+interface ProtectedRouteProps {
+  children: React.ReactNode
+  requiredRole?: string
+}
+
+function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  // 从 localStorage 获取登录信息
+  const token = localStorage.getItem('token')
+  const role = localStorage.getItem('role')
+
+  if (!token) {
+    return <Navigate to="/" replace />
+  }
+
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
 }
 
 export default function App() {
@@ -30,9 +52,10 @@ export default function App() {
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/mine" element={<MinePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/admin/report" element={<DataReportPage />} />
-        <Route path="/admin/quota" element={<AdminQuotaPage />} />
-        <Route path="/admin/price" element={<AdminPricePage />} />
+        <Route path="/admin/report" element={<ProtectedRoute requiredRole="admin"><DataReportPage /></ProtectedRoute>} />
+        <Route path="/admin/quota" element={<ProtectedRoute requiredRole="admin"><AdminQuotaPage /></ProtectedRoute>} />
+        <Route path="/admin/price" element={<ProtectedRoute requiredRole="admin"><AdminPricePage /></ProtectedRoute>} />
+        <Route path="/devlog" element={<DevLogPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

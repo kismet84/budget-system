@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings, Database, Github, ChevronRight, Loader2 } from 'lucide-react'
+import { Settings, Database, Github, ChevronRight, Loader2, ScrollText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import BottomNav from '../components/BottomNav'
@@ -103,6 +103,21 @@ export default function MinePage() {
               <div>
                 <div className="text-white text-sm font-medium">定额导入</div>
                 <div className="text-slate-400 text-xs mt-0.5">Excel 定额文件导入</div>
+              </div>
+              <ChevronRight size={16} className="text-slate-600 ml-auto" />
+            </div>
+          </button>
+
+          {/* Dev Log */}
+          <button
+            onClick={() => navigate('/devlog')}
+            className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 text-left hover:border-slate-600 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <ScrollText size={20} className="text-purple-400" />
+              <div>
+                <div className="text-white text-sm font-medium">开发日志</div>
+                <div className="text-slate-400 text-xs mt-0.5">查看开发记录和变更历史</div>
               </div>
               <ChevronRight size={16} className="text-slate-600 ml-auto" />
             </div>

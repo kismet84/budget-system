@@ -7,12 +7,6 @@ from sqlalchemy import text
 from typing import List, Optional
 
 
-def get_connection():
-    import psycopg2
-    from config import settings
-    return psycopg2.connect(settings.DATABASE_URL)
-
-
 def match_market_price(
     db: Session,
     material_name: str,
